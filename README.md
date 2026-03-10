@@ -16,17 +16,18 @@ An AI-powered web application that automatically generates questions and answers
 - **Answer a Question** — Ask a custom question about the provided context and get an AI-extracted answer
 - **Export Results** — Download generated Q&A as a `.txt` file
 - **Copy to Clipboard** — One-click copy for any question or answer
+- **Light / Dark Theme** — Clean, professional UI with a theme toggle (persists in localStorage)
 - **Real-time Validation** — Word count, character limit, and input validation
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18, Vite, Axios |
-| **Backend** | Flask, Flask-CORS |
-| **Question Generation** | T5 (valhalla/t5-small-qg-hl) |
-| **Answer Extraction** | BERT (bert-large-uncased-whole-word-masking-finetuned-squad) |
-| **ML Framework** | PyTorch, HuggingFace Transformers |
+| Layer                   | Technology                                                   |
+| ----------------------- | ------------------------------------------------------------ |
+| **Frontend**            | React 18, Vite, Axios                                        |
+| **Backend**             | Flask, Flask-CORS                                            |
+| **Question Generation** | T5 (valhalla/t5-small-qg-hl)                                 |
+| **Answer Extraction**   | BERT (bert-large-uncased-whole-word-masking-finetuned-squad) |
+| **ML Framework**        | PyTorch, HuggingFace Transformers                            |
 
 ## Project Structure
 
@@ -66,12 +67,12 @@ Question-Answering-System-using-NLP/
 
 ## API Endpoints
 
-| Method | Endpoint | Description | Body |
-|--------|----------|-------------|------|
-| `GET` | `/health` | Health check | — |
-| `POST` | `/qnas` | Generate questions & answers | `{ "text": "..." }` |
-| `POST` | `/qs` | Generate questions only | `{ "text": "..." }` |
-| `POST` | `/as` | Answer a specific question | `{ "text": "...", "question": "..." }` |
+| Method | Endpoint  | Description                  | Body                                   |
+| ------ | --------- | ---------------------------- | -------------------------------------- |
+| `GET`  | `/health` | Health check                 | —                                      |
+| `POST` | `/qnas`   | Generate questions & answers | `{ "text": "..." }`                    |
+| `POST` | `/qs`     | Generate questions only      | `{ "text": "..." }`                    |
+| `POST` | `/as`     | Answer a specific question   | `{ "text": "...", "question": "..." }` |
 
 ## Setup & Installation
 
@@ -110,11 +111,11 @@ Navigate to **http://localhost:5173** in your browser.
 
 ## Screenshots
 
-| Feature | Description |
-|---------|-------------|
+| Feature                      | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
 | Input text and select a mode | Paste any text and click Generate Q&A, Questions Only, or Answer a Question |
-| Generated Q&A cards | Questions and answers displayed in styled cards with copy buttons |
-| Export | Download all results as a text file |
+| Generated Q&A cards          | Questions and answers displayed in styled cards with copy buttons           |
+| Export                       | Download all results as a text file                                         |
 
 ## Models Used
 
@@ -129,4 +130,3 @@ Navigate to **http://localhost:5173** in your browser.
 ## License
 
 This project is for educational purposes.
-

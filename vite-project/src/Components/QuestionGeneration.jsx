@@ -1,61 +1,41 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import './QuestionGeneration.css';
 
 const API = 'http://127.0.0.1:5001';
 
-const Spinner = () => (
-  <div className="spinner-wrap">
-    <div className="spinner" />
-    <p className="spinner-text">AI models are processing your text…</p>
-  </div>
-);
-
-const CopyIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-);
-
 const QuestionGeneration = () => {
-  const [inputText, setInputText]   = useState('');
-  const [qaList,    setQaList]      = useState([]);
-  const [qList,     setQList]       = useState([]);
-  const [aList,     setAList]       = useState([]);
-  const [error,     setError]       = useState('');
-  const [loading,   setLoading]     = useState(false);
-  const [mode,      setMode]        = useState(null);   // 'qna' | 'questions' | 'answers'
-  const [question,  setQuestion]    = useState('');
-  const [copied,    setCopied]      = useState(null);
-  const [toast,     setToast]       = useState('');
+  const [inputText, setInputText] = useState('');
+  const [qaList, setQaList]       = useState([]);
+  const [qList, setQList]         = useState([]);
+  const [aList, setAList]         = useState([]);
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [mode, setMode]           = useState(null);
+  const [question, setQuestion]   = useState('');
+  const [copied, setCopied]       = useState(null);
+  const [dark, setDark]           = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   const questionRef = useRef(null);
-  const MAX_CHARS   = 3000;
-  const wordCount   = inputText.trim() ? inputText.trim().split(/\s+/).length : 0;
-  const hasResults  = qaList.length > 0 || qList.length > 0 || aList.length > 0;
+  const MAX_CHARS = 3000;
+  const wordCount = inputText.trim() ? inputText.trim().split(/\s+/).length : 0;
+  const hasResults = qaList.length > 0 || qList.length > 0 || aList.length > 0;
   const resultCount = qaList.length || qList.length || aList.length;
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
-  };
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   const copyText = async (text, id) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(id);
-      setTimeout(() => setCopied(null), 2000);
-      showToast('Copied!');
-    } catch {
-      showToast('Copy failed');
-    }
+      setTimeout(() => setCopied(null), 1800);
+    } catch { /* ignore */ }
   };
 
   const reset = () => {
@@ -68,7 +48,7 @@ const QuestionGeneration = () => {
     setError(''); setMode(null);
   };
 
-  const request = async (endpoint, body, newMode) => {
+  const apiRequest = async (endpoint, body, newMode) => {
     if (!inputText.trim()) return setError('Please enter some text first.');
     setLoading(true); setError('');
     setQaList([]); setQList([]); setAList([]);
@@ -77,18 +57,24 @@ const QuestionGeneration = () => {
       const res = await axios.post(`${API}/${endpoint}`, body);
       return res.data;
     } catch (err) {
-      setError(err.response?.data?.error || `Error generating ${newMode}. Please try again.`);
+      setError(err.response?.data?.error || 'Something went wrong. Please try again.');
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQnA       = async () => { const d = await request('qnas', { text: inputText }, 'qna');       if (d) setQaList(d); };
-  const handleQuestions = async () => { const d = await request('qs',   { text: inputText }, 'questions'); if (d) setQList(d);  };
-  const handleAnswer    = async () => {
+  const handleQnA = async () => {
+    const d = await apiRequest('qnas', { text: inputText }, 'qna');
+    if (d) setQaList(d);
+  };
+  const handleQuestions = async () => {
+    const d = await apiRequest('qs', { text: inputText }, 'questions');
+    if (d) setQList(d);
+  };
+  const handleAnswer = async () => {
     if (!question.trim()) return setError('Please type a question.');
-    const d = await request('as', { text: inputText, question }, 'answers');
+    const d = await apiRequest('as', { text: inputText, question }, 'answers');
     if (d) setAList(d);
   };
 
@@ -100,161 +86,143 @@ const QuestionGeneration = () => {
 
   const exportTxt = () => {
     let lines = '';
-    if (qaList.length)   lines = qaList.map((qa,i) => `Q${i+1}: ${qa.question}\nAnswer: ${qa.answer}`).join('\n\n');
-    else if (qList.length)  lines = qList.map((q,i)  => `Q${i+1}: ${q.question}`).join('\n');
-    else if (aList.length)  lines = `Question: ${question}\nAnswer: ${aList[0]?.answer}`;
+    if (qaList.length) lines = qaList.map((qa, i) => `Q${i + 1}: ${qa.question}\nAnswer: ${qa.answer}`).join('\n\n');
+    else if (qList.length) lines = qList.map((q, i) => `Q${i + 1}: ${q.question}`).join('\n');
+    else if (aList.length) lines = `Question: ${question}\nAnswer: ${aList[0]?.answer}`;
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(new Blob([lines], { type: 'text/plain' })),
       download: 'qa-results.txt',
     });
     a.click();
-    showToast('Exported!');
   };
 
   return (
-    <div className="app">
-      {toast && <div className="toast">{toast}</div>}
+    <div className="qg">
+      {/* Top bar */}
+      <nav className="topbar">
+        <div className="topbar-title">Question Answering System</div>
+        <button className="theme-toggle" onClick={() => setDark(!dark)} title="Toggle theme">
+          {dark ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          )}
+        </button>
+      </nav>
 
-      {/* ── Header ── */}
-      <header className="header">
-        <span className="header-icon">🧠</span>
-        <h1>AI Question Generator</h1>
-        <p>Transform any text into questions &amp; answers using NLP</p>
-      </header>
-
-      {/* ── Input card ── */}
-      <section className="card input-card">
-        <div className="row-between mb-10">
-          <span className="label">Input Text</span>
-          <span className={`char-counter ${inputText.length > MAX_CHARS * 0.9 ? 'warn' : ''}`}>
-            {wordCount} words · {inputText.length}/{MAX_CHARS}
-          </span>
+      {/* Input section */}
+      <section className="input-section">
+        <div className="section-header">
+          <label className="section-label">Enter your text</label>
+          <span className="counter">{wordCount} words &middot; {inputText.length}/{MAX_CHARS}</span>
         </div>
-
         <textarea
-          className="textarea"
-          rows={8}
+          className="input-area"
+          rows={7}
           maxLength={MAX_CHARS}
-          placeholder="Paste an article, paragraph, or study notes here…"
+          placeholder="Paste an article, paragraph, or study notes here..."
           value={inputText}
           onChange={(e) => { setInputText(e.target.value); setError(''); }}
         />
-
-        <div className="btn-row">
-          <button className="btn btn-primary" onClick={handleQnA} disabled={loading}>
-            <span>⚡</span> Generate Q&amp;A
-          </button>
-          <button className="btn btn-secondary" onClick={handleQuestions} disabled={loading}>
-            <span>❓</span> Questions Only
-          </button>
-          <button className={`btn btn-outline ${mode === 'answers' ? 'active' : ''}`} onClick={openAnswerMode} disabled={loading}>
-            <span>💬</span> Answer a Question
-          </button>
+        <div className="actions">
+          <button className="btn btn-fill" onClick={handleQnA} disabled={loading}>Generate Q&amp;A</button>
+          <button className="btn btn-soft" onClick={handleQuestions} disabled={loading}>Questions Only</button>
+          <button className={`btn btn-outline ${mode === 'answers' ? 'active' : ''}`} onClick={openAnswerMode} disabled={loading}>Ask a Question</button>
           {(inputText || hasResults) && (
-            <button className="btn btn-ghost" onClick={reset} disabled={loading}>✕ Clear</button>
+            <button className="btn btn-text" onClick={reset} disabled={loading}>Clear</button>
           )}
         </div>
 
-        {/* Answer mode input */}
         {mode === 'answers' && (
-          <div className="answer-row">
+          <div className="ask-row">
             <input
               ref={questionRef}
-              className="question-input"
+              className="ask-input"
               type="text"
-              placeholder="Type your question and press Enter…"
+              placeholder="Type your question here..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAnswer()}
             />
-            <button className="btn btn-primary" onClick={handleAnswer} disabled={loading || !question.trim()}>
+            <button className="btn btn-fill" onClick={handleAnswer} disabled={loading || !question.trim()}>
               Get Answer
             </button>
           </div>
         )}
       </section>
 
-      {/* ── Error ── */}
-      {error && (
-        <div className="error-bar">
-          <span>⚠️</span> {error}
+      {/* Error */}
+      {error && <div className="error-msg">{error}</div>}
+
+      {/* Loading */}
+      {loading && (
+        <div className="loading">
+          <div className="loading-spinner" />
+          <span>Processing...</span>
         </div>
       )}
 
-      {/* ── Spinner ── */}
-      {loading && <Spinner />}
-
-      {/* ── Results ── */}
+      {/* Results */}
       {!loading && hasResults && (
-        <section className="results">
-          <div className="results-header">
-            <div className="results-title">
-              <span className="badge">{resultCount}</span>
-              {mode === 'qna'       && 'Questions & Answers'}
+        <section className="results-section">
+          <div className="results-bar">
+            <h2 className="results-heading">
+              {mode === 'qna' && 'Questions & Answers'}
               {mode === 'questions' && 'Generated Questions'}
-              {mode === 'answers'   && 'Answer'}
-            </div>
-            <button className="btn-export" onClick={exportTxt}>↓ Export</button>
+              {mode === 'answers' && 'Answer'}
+              <span className="count-badge">{resultCount}</span>
+            </h2>
+            <button className="btn btn-text" onClick={exportTxt}>Export .txt</button>
           </div>
 
-          <div className="cards-grid">
-            {/* QnA cards */}
+          <div className="results-list">
             {qaList.map((qa, i) => (
-              <div className="result-card" key={i} style={{ animationDelay: `${i * 0.06}s` }}>
-                <div className="card-top">
-                  <span className="card-tag">Q{i + 1}</span>
-                  <button className="copy-btn" onClick={() => copyText(`${qa.question}\nAnswer: ${qa.answer}`, `qa-${i}`)}>
-                    {copied === `qa-${i}` ? <CheckIcon /> : <CopyIcon />}
+              <div className="result-item" key={i}>
+                <div className="result-top">
+                  <span className="result-num">Q{i + 1}</span>
+                  <button className="copy-btn" onClick={() => copyText(`${qa.question}\n${qa.answer}`, `qa-${i}`)}>
+                    {copied === `qa-${i}` ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="card-q">{qa.question}</p>
-                <div className="card-a">
-                  <span className="a-label">Answer</span>
-                  <span className="a-text">{qa.answer}</span>
+                <p className="result-question">{qa.question}</p>
+                <div className="result-answer">
+                  <span className="answer-label">Answer:</span> {qa.answer}
                 </div>
               </div>
             ))}
 
-            {/* Question-only cards */}
             {qList.map((q, i) => (
-              <div className="result-card result-card--q" key={i} style={{ animationDelay: `${i * 0.06}s` }}>
-                <div className="card-top">
-                  <span className="card-tag">Q{i + 1}</span>
+              <div className="result-item" key={i}>
+                <div className="result-top">
+                  <span className="result-num">Q{i + 1}</span>
                   <button className="copy-btn" onClick={() => copyText(q.question, `q-${i}`)}>
-                    {copied === `q-${i}` ? <CheckIcon /> : <CopyIcon />}
+                    {copied === `q-${i}` ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="card-q">{q.question}</p>
+                <p className="result-question">{q.question}</p>
               </div>
             ))}
 
-            {/* Answer card */}
             {aList.map((a, i) => (
-              <div className="result-card result-card--a" key={i}>
-                <div className="card-top">
-                  <span className="card-tag card-tag--a">Answer</span>
+              <div className="result-item result-item--answer" key={i}>
+                <div className="result-top">
+                  <span className="result-num answer-num">A</span>
                   <button className="copy-btn" onClick={() => copyText(a.answer, `a-${i}`)}>
-                    {copied === `a-${i}` ? <CheckIcon /> : <CopyIcon />}
+                    {copied === `a-${i}` ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="q-ref"><span>Question:</span> {question}</p>
-                <p className="a-big">{a.answer}</p>
+                <p className="result-ref">Q: {question}</p>
+                <p className="result-answer-text">{a.answer}</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* ── Empty state ── */}
+      {/* Empty state */}
       {!loading && !hasResults && !error && (
-        <div className="empty">
-          <span className="empty-icon">📄</span>
-          <p>Paste any text above and click a button to get started</p>
-          <div className="tags">
-            {['📚 Study Material', '📰 Articles', '📖 Textbooks', '📝 Notes'].map(t => (
-              <span className="tag" key={t}>{t}</span>
-            ))}
-          </div>
+        <div className="empty-state">
+          <p>Enter text above and choose an action to generate questions or answers.</p>
         </div>
       )}
     </div>
@@ -262,4 +230,5 @@ const QuestionGeneration = () => {
 };
 
 export default QuestionGeneration;
+
 
